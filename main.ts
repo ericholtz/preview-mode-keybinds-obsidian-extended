@@ -55,10 +55,15 @@ export default class PreviewKeybinds extends Plugin {
 
       const preview:MarkdownPreviewView = view.previewMode;
       
-      if (preview.containerEl.classList.contains('is-searching') || !preview) {
-         console.debug('skipping keyboard event ', e.key);
-         return;
-      }
+      if (
+        preview.containerEl.querySelector(
+          'div.markdown-reading-view > div.document-search-container'
+        ) ||
+        !preview
+      ) {
+           console.debug('skipping keyboard event ', e.key);
+           return;
+        }
 
       switch (e.key) {
          case this.settings.up:
