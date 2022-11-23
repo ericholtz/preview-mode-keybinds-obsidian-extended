@@ -17,6 +17,7 @@ interface PreviewKeybindsPluginSettings {
 	searchDoc: string
 	scrollBottom: string
 	scrollTop: string
+	bottomOffset: number // workaround for scroll to bottom not working see #10
 }
 
 const DEFAULT_SETTINGS: PreviewKeybindsPluginSettings = {
@@ -27,6 +28,7 @@ const DEFAULT_SETTINGS: PreviewKeybindsPluginSettings = {
 	searchDoc: '/',
 	scrollBottom: 'g',
 	scrollTop: '0',
+	bottomOffset: 1,
 }
 
 export default class PreviewKeybinds extends Plugin {
@@ -96,7 +98,9 @@ export default class PreviewKeybinds extends Plugin {
 				preview.applyScroll(0)
 				break
 			case this.settings.scrollBottom:
-				preview.applyScroll(view.editor.lastLine() - 1)
+				preview.applyScroll(
+					view.editor.lastLine() - this.settings.bottomOffset
+				)
 				break
 			default:
 				return
@@ -144,6 +148,21 @@ class PreviewKeybindsSettingTab extends PluginSettingTab {
 						if (newVal === null) return
 						if (newVal <= 0) newVal = 1
 						this.plugin.settings.linesToScroll = Math.round(newVal)
+						await this.plugin.saveSettings()
+					})
+			)
+
+		new Setting(containerEl)
+			.setName('Bottom offset (Workaround)')
+			.setDesc('if "scroll to bottom" doesn\'t work, raise this number')
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.bottomOffset.toString())
+					.onChange(async (value) => {
+						let newVal = Number(value)
+						if (newVal === null) return
+						if (newVal <= 1) newVal = 1
+						this.plugin.settings.bottomOffset = Math.round(newVal)
 						await this.plugin.saveSettings()
 					})
 			)
