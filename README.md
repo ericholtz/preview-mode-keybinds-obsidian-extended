@@ -27,7 +27,10 @@ Download the latest release (`main.js` and `manifest.json`) from the [releases p
 
 Then, disable 'Safe mode' under 'Settings > Community plugins' and enable 'Preview Mode Keybinds'.
 
+### Development
 
-**For your safety, please verify yourself that a plugin is safe before installing it**
+Use `npm run dev` for building during development.
+
+Use `npm run build` to build for release.
 
 
