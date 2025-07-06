@@ -22,11 +22,14 @@ interface PreviewKeybindsPluginSettings {
 
 const DEFAULT_SETTINGS: PreviewKeybindsPluginSettings = {
 	linesToScroll: 3,
+	moreLinesToScroll: 10,
 	up: 'k',
 	down: 'j',
+	moreUp: 'u',
+	moreDown: 'd',
 	enterEditMode: 'i',
 	searchDoc: '/',
-	scrollBottom: 'g',
+	scrollBottom: '$',
 	scrollTop: '0',
 	bottomOffset: 1,
 }
@@ -84,6 +87,16 @@ export default class PreviewKeybinds extends Plugin {
 			case this.settings.down:
 				preview.applyScroll(
 					preview.getScroll() + this.settings.linesToScroll
+				)
+				break
+			case this.settings.moreUp:
+				preview.applyScroll(
+					preview.getScroll() - this.settings.moreLinesToScroll
+				)
+				break
+			case this.settings.moreDown:
+				preview.applyScroll(
+					preview.getScroll() + this.settings.moreLinesToScroll
 				)
 				break
 			case this.settings.enterEditMode:
@@ -186,6 +199,23 @@ class PreviewKeybindsSettingTab extends PluginSettingTab {
 				let newKey: string = this.verifyNewKeyBinding(value)
 				if (newKey === '') return
 				this.plugin.settings.down = newKey
+				await this.plugin.saveSettings()
+			})
+		)
+		new Setting(containerEl).setName('Scroll More Up').addText((text) =>
+			text.setValue(this.plugin.settings.moreUp).onChange(async (value) => {
+				let newKey: string = this.verifyNewKeyBinding(value)
+				if (newKey === '') return
+				this.plugin.settings.moreUp = newKey
+				await this.plugin.saveSettings()
+			})
+		)
+
+		new Setting(containerEl).setName('Scroll More Down').addText((text) =>
+			text.setValue(this.plugin.settings.moreDown).onChange(async (value) => {
+				let newKey: string = this.verifyNewKeyBinding(value)
+				if (newKey === '') return
+				this.plugin.settings.moreDown = newKey
 				await this.plugin.saveSettings()
 			})
 		)
