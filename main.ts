@@ -166,6 +166,22 @@ class PreviewKeybindsSettingTab extends PluginSettingTab {
 			)
 
 		new Setting(containerEl)
+			.setName('Number of More Lines to Scroll')
+			.setDesc("Affects 'Scroll More Up' and 'Scroll More Down' keybinds")
+			.addText((text) =>
+				text
+					.setValue(this.plugin.settings.moreLinesToScroll.toString())
+					.onChange(async (value) => {
+						let newVal = Number(value)
+						/* compare to NaN instead? */
+						if (newVal === null) return
+						if (newVal <= 0) newVal = 1
+						this.plugin.settings.moreLinesToScroll = Math.round(newVal)
+						await this.plugin.saveSettings()
+					})
+			)
+
+		new Setting(containerEl)
 			.setName('Bottom offset (Workaround)')
 			.setDesc('if "scroll to bottom" doesn\'t work, raise this number')
 			.addText((text) =>
