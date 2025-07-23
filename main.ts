@@ -6,13 +6,17 @@ import {
 	PluginSettingTab,
 	Setting,
 } from 'obsidian'
+import { ScrollUpCommand } from 'commands/scrollUp'
+import { ScrollDownCommand } from 'commands/scrollDown'
+import { ScrollHalfUpCommand } from 'commands/scrollHalfUp'
+import { ScrollHalfDownCommand } from 'commands/scrollHalfDown'
 
 // Remember to rename these classes and interfaces!
 
 interface PreviewKeybindsPluginSettings {
 	linesToScroll: number
-	up: string
-	down: string
+	halfPageDistance: number
+	fullPageDistance: number
 	enterEditMode: string
 	searchDoc: string
 	scrollBottom: string
@@ -22,11 +26,8 @@ interface PreviewKeybindsPluginSettings {
 
 const DEFAULT_SETTINGS: PreviewKeybindsPluginSettings = {
 	linesToScroll: 3,
-	moreLinesToScroll: 10,
-	up: 'k',
-	down: 'j',
-	moreUp: 'u',
-	moreDown: 'd',
+	halfPageDistance: 10,
+	fullPageDistance: 20,
 	enterEditMode: 'i',
 	searchDoc: '/',
 	scrollBottom: '$',
@@ -45,6 +46,11 @@ export default class PreviewKeybinds extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('layout-change', this.onLayoutChange)
 		)
+
+		new ScrollUpCommand(this);
+		new ScrollDownCommand(this);
+		new ScrollHalfUpCommand(this);
+		new ScrollHalfDownCommand(this);
 	}
 
 	private readonly onLayoutChange = (): void => {
@@ -61,7 +67,7 @@ export default class PreviewKeybinds extends Plugin {
 		})
 	}
 
-	private readonly onKeyDown = (e: KeyboardEvent) => {
+	private getPreview() {
 		const view: MarkdownView =
 			this.app.workspace.getActiveViewOfType(MarkdownView)
 		if (!view) return
@@ -74,33 +80,49 @@ export default class PreviewKeybinds extends Plugin {
 			) ||
 			!preview
 		) {
-			console.debug('skipping keyboard event ', e.key)
+			console.debug('not in preview mode')
 			return
 		}
+		return { view, preview }
+	}
+
+	scrollHalfUp() {
+		const { preview } = this.getPreview()
+		if (!preview) {
+			document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { "key": "ArrowDown", "code": "ArrowDown" }))
+		}
+		preview.applyScroll(
+			preview.getScroll() - this.settings.halfPageDistance
+		)
+	}
+
+	scrollHalfDown() {
+		const { preview } = this.getPreview()
+		preview.applyScroll(
+			preview.getScroll() + this.settings.halfPageDistance
+		)
+	}
+
+	scrollUp() {
+		const { preview } = this.getPreview()
+		preview.applyScroll(
+			preview.getScroll() - this.settings.linesToScroll
+		)
+	}
+
+	scrollDown() {
+		const { preview } = this.getPreview()
+		preview.applyScroll(
+			preview.getScroll() + this.settings.linesToScroll
+		)
+	}
+
+	private readonly onKeyDown = (e: KeyboardEvent) => {
+		const { view, preview } = this.getPreview()
 
 		switch (e.key) {
-			case this.settings.up:
-				preview.applyScroll(
-					preview.getScroll() - this.settings.linesToScroll
-				)
-				break
-			case this.settings.down:
-				preview.applyScroll(
-					preview.getScroll() + this.settings.linesToScroll
-				)
-				break
-			case this.settings.moreUp:
-				preview.applyScroll(
-					preview.getScroll() - this.settings.moreLinesToScroll
-				)
-				break
-			case this.settings.moreDown:
-				preview.applyScroll(
-					preview.getScroll() + this.settings.moreLinesToScroll
-				)
-				break
 			case this.settings.enterEditMode:
-				;(this.app as any).commands.executeCommandById(
+				; (this.app as any).commands.executeCommandById(
 					'markdown:toggle-preview'
 				)
 				break
@@ -121,7 +143,7 @@ export default class PreviewKeybinds extends Plugin {
 		e.preventDefault()
 	}
 
-	async onunload() {}
+	async onunload() { }
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -167,16 +189,16 @@ class PreviewKeybindsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Number of More Lines to Scroll')
-			.setDesc("Affects 'Scroll More Up' and 'Scroll More Down' keybinds")
+			.setDesc("Affects 'Scroll Half Up' and 'Scroll Half Down' keybinds")
 			.addText((text) =>
 				text
-					.setValue(this.plugin.settings.moreLinesToScroll.toString())
+					.setValue(this.plugin.settings.halfPageDistance.toString())
 					.onChange(async (value) => {
 						let newVal = Number(value)
 						/* compare to NaN instead? */
 						if (newVal === null) return
 						if (newVal <= 0) newVal = 1
-						this.plugin.settings.moreLinesToScroll = Math.round(newVal)
+						this.plugin.settings.halfPageDistance = Math.round(newVal)
 						await this.plugin.saveSettings()
 					})
 			)
@@ -200,41 +222,6 @@ class PreviewKeybindsSettingTab extends PluginSettingTab {
 		containerEl.createEl('p', {
 			text: 'Only non-space character keys (letters, symbols and digits) can be used for keybindings. Arrow keys, enter, space, tab etc. are not supproted. Modifier keys (shift, alt etc.) are not supported.',
 		})
-
-		new Setting(containerEl).setName('Scroll Up').addText((text) =>
-			text.setValue(this.plugin.settings.up).onChange(async (value) => {
-				let newKey: string = this.verifyNewKeyBinding(value)
-				if (newKey === '') return
-				this.plugin.settings.up = newKey
-				await this.plugin.saveSettings()
-			})
-		)
-
-		new Setting(containerEl).setName('Scroll Down').addText((text) =>
-			text.setValue(this.plugin.settings.down).onChange(async (value) => {
-				let newKey: string = this.verifyNewKeyBinding(value)
-				if (newKey === '') return
-				this.plugin.settings.down = newKey
-				await this.plugin.saveSettings()
-			})
-		)
-		new Setting(containerEl).setName('Scroll More Up').addText((text) =>
-			text.setValue(this.plugin.settings.moreUp).onChange(async (value) => {
-				let newKey: string = this.verifyNewKeyBinding(value)
-				if (newKey === '') return
-				this.plugin.settings.moreUp = newKey
-				await this.plugin.saveSettings()
-			})
-		)
-
-		new Setting(containerEl).setName('Scroll More Down').addText((text) =>
-			text.setValue(this.plugin.settings.moreDown).onChange(async (value) => {
-				let newKey: string = this.verifyNewKeyBinding(value)
-				if (newKey === '') return
-				this.plugin.settings.moreDown = newKey
-				await this.plugin.saveSettings()
-			})
-		)
 
 		new Setting(containerEl).setName('Enter Edit Mode').addText((text) =>
 			text
